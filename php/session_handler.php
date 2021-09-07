@@ -11,8 +11,7 @@
 	
     if (isset($_COOKIE['session_id'])) {
 
-        #$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "id12782411_ferreteria_root_db_user", 'db_pass' => 'EZQW4XB$6n2hf8%', 'db_name' => "id12782411_ferreteria"));
-		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => '', 'db_name' => "id12782411_ferreteria"));
+		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => '', 'db_name' => "compraFacil"));
         $query_args = array(
             "cookieid" => $_COOKIE['session_id']
         );
