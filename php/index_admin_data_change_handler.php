@@ -14,8 +14,7 @@
             $json_data = json_decode(file_get_contents('php://input'));
         }
 
-        ##$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "id12782411_ferreteria_root_db_user", 'db_pass' => 'EZQW4XB$6n2hf8%', 'db_name' => "id12782411_ferreteria"));
-		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => '', 'db_name' => "id12782411_ferreteria"));
+		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'admin', 'db_name' => "compraFacil"));
 
         switch ($json_data->changeHeader) {
             case "personRegistry":
@@ -24,9 +23,6 @@
                 $personIdType = 1;
                 $personFirstName = $json_data->changeArguments->personFirstName;
                 $personLastName = $json_data->changeArguments->personLastName;
-                $personPhoneNumber = $json_data->changeArguments->personPhoneNumber;
-                $personCellphoneNumber = $json_data->changeArguments->personCellphoneNumber;
-                $personAddress = $json_data->changeArguments->personAddress;
                 $addUser = $json_data->changeArguments->addUser;
 
                 if ($addUser == 1) {
@@ -58,11 +54,8 @@
                         ,"personid" => $personId
                         , "personfirstname" => $personFirstName
                         , "personlastname" => $personLastName
-                        , "personphone" => $personPhoneNumber
-                        , "personcellphone" => $personCellphoneNumber
-                        , "personaddress" => $personAddress
                     );
-                    $query = "INSERT INTO empleado (id_tipo_identificacion, numero_identificacion_empleado, nombre_empleado, apellido_empleado, telefono_fijo_empleado, telefono_celular_empleado, direccion_residencia_empleado, fecha_registro_empleado, activo) VALUES (:personidtype, :personid, :personfirstname, :personlastname, :personphone, :personcellphone, :personaddress, NOW(), TRUE)";
+                    $query = "INSERT INTO empleado (id_tipo_identificacion, numero_identificacion_empleado, nombre_empleado, apellido_empleado, fecha_registro_empleado, activo) VALUES (:personidtype, :personid, :personfirstname, :personlastname, NOW(), TRUE)";
                     $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_02");
                     logHandler(array("query" => $query_data[2], "action" => "insert"));
 
@@ -148,18 +141,6 @@
                             break;
                         case 3:
                             $query = "UPDATE empleado SET apellido_empleado = :toupdatevalue WHERE id = :toupdateid";
-                            $logAction = "update";
-                            break;
-                        case 4:
-                            $query = "UPDATE empleado SET telefono_fijo_empleado = :toupdatevalue WHERE id = :toupdateid";
-                            $logAction = "update";
-                            break;
-                        case 5:
-                            $query = "UPDATE empleado SET telefono_celular_empleado = :toupdatevalue WHERE id = :toupdateid";
-                            $logAction = "update";
-                            break;
-                        case 6:
-                            $query = "UPDATE empleado SET direccion_residencia_empleado = :toupdatevalue WHERE id = :toupdateid";
                             $logAction = "update";
                             break;
                         case 7:

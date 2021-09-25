@@ -16,8 +16,7 @@
             $json_data = json_decode(file_get_contents('php://input'));
         }
 
-        ##$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "id12782411_ferreteria_root_db_user", 'db_pass' => 'EZQW4XB$6n2hf8%', 'db_name' => "id12782411_ferreteria"));
-		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => '', 'db_name' => "id12782411_ferreteria"));
+		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'admin', 'db_name' => "compraFacil"));
 
         switch ($json_data->callHeader) {
             case "closeSession":
