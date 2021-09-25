@@ -16,7 +16,7 @@
             $json_data = json_decode(file_get_contents('php://input'));
         }
 
-		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => '', 'db_name' => "compraFacil"));
+		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'admin', 'db_name' => "compraFacil"));
 
         switch ($json_data->callHeader) {
             case "closeSession":
@@ -122,7 +122,7 @@
             case "showPersons":
 
                 $query_args = array();
-                $query = "SELECT id, numero_identificacion_empleado, CONCAT(nombre_empleado, ' ', apellido_empleado) AS nombre_completo, telefono_celular_empleado, activo FROM empleado ORDER BY activo DESC, nombre_completo ASC";
+                $query = "SELECT id, numero_identificacion_empleado, CONCAT(nombre_empleado, ' ', apellido_empleado) AS nombre_completo, activo FROM empleado ORDER BY activo DESC, nombre_completo ASC";
                 $query_data = pdoExecuteQuery($pdo_mysql_rw,$query,$query_args,$json_data->callHeader."_query_01");
 
                 $json_response["values"] = array(
@@ -138,7 +138,6 @@
                         $json_response["values"]["id"][$x] = $query_data[0][$x]["id"];
                         $json_response["values"]["personId"][$x] = $query_data[0][$x]["numero_identificacion_empleado"];
                         $json_response["values"]["personFullName"][$x] = $query_data[0][$x]["nombre_completo"];
-                        $json_response["values"]["personCellphone"][$x] = $query_data[0][$x]["telefono_celular_empleado"];
                         $json_response["values"]["active"][$x] = $query_data[0][$x]["activo"];
                     }
                 }
@@ -177,7 +176,7 @@
                 $query_args = array(
                     "personid" => $json_data->callArguments->personId
                 );
-                $query = "SELECT id, numero_identificacion_empleado, nombre_empleado, apellido_empleado, telefono_fijo_empleado, telefono_celular_empleado, direccion_residencia_empleado, fecha_registro_empleado, activo FROM empleado WHERE id = :personid";
+                $query = "SELECT id, numero_identificacion_empleado, nombre_empleado, apellido_empleado, fecha_registro_empleado, activo FROM empleado WHERE id = :personid";
                 $query_data = pdoExecuteQuery($pdo_mysql_rw,$query,$query_args,$json_data->callHeader."_query_01");
 
                 $json_response["values"] = array(
@@ -186,9 +185,6 @@
                     , "userId" => ""
                     , "personFirstName" => ""
                     , "personLastName" => ""
-                    , "personPhone" => ""
-                    , "personCellphone" => ""
-                    , "personAddress" => ""
                     , "personUserName" => ""
                     , "personUserPassword" => ""
                     , "personRegistrationDate" => ""
@@ -202,9 +198,6 @@
                     $json_response["values"]["personId"] = $query_data[0][0]["numero_identificacion_empleado"];
                     $json_response["values"]["personFirstName"] = $query_data[0][0]["nombre_empleado"];
                     $json_response["values"]["personLastName"] = $query_data[0][0]["apellido_empleado"];
-                    $json_response["values"]["personPhone"] = $query_data[0][0]["telefono_fijo_empleado"];
-                    $json_response["values"]["personCellphone"] = $query_data[0][0]["telefono_celular_empleado"];
-                    $json_response["values"]["personAddress"] = $query_data[0][0]["direccion_residencia_empleado"];
                     $json_response["values"]["personRegistrationDate"] = $query_data[0][0]["fecha_registro_empleado"];
                     $json_response["values"]["isPersonActive"] = $query_data[0][0]["activo"];
 
