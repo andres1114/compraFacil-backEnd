@@ -11,7 +11,7 @@
 	
     if (isset($_COOKIE['session_id'])) {
 
-		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => '', 'db_name' => "compraFacil"));
+		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'admin', 'db_name' => "compraFacil"));
         $query_args = array(
             "cookieid" => $_COOKIE['session_id']
         );
