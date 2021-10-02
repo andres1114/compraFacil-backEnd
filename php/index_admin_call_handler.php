@@ -292,29 +292,25 @@
                 $json_response["errorMessage"] = null;
 
                 break;
-            case "showProviders":
+            case "showGroceries":
 
                 $query_args = array();
-                $query = "SELECT proveedor.id AS provider_id, numero_identificacion_proveedor, nombre_proveedor, telefono_proveedor, nombre_ciudad, nombre_pais, activo FROM proveedor INNER JOIN ciudad ON proveedor.id_ciudad = ciudad.id INNER JOIN pais ON ciudad.id_pais = pais.id ORDER BY activo DESC, nombre_pais ASC, nombre_ciudad ASC, nombre_proveedor ASC";
+                $query = "SELECT almacen.id AS id_almacen, nombre_almacen, pagina_web_almacen, CONCAT(index_archivo,'.',extencion_archivo) AS imagen_almacen, activo FROM almacen LEFT JOIN imagen ON almacen.id_imagen = imagen.id ORDER BY activo DESC, nombre_almacen ASC";
                 $query_data = pdoExecuteQuery($pdo_mysql_rw,$query,$query_args,$json_data->callHeader."_query_01");
 
                 $json_response["values"] = array(
                     "id" => array()
-                    ,"providerId" => array()
-                    ,"providerName" => array()
-                    ,"name" => array()
-                    ,"providerPhone" => array()
-                    ,"providerCity" => array()
+                    ,"groceryName" => array()
+                    ,"groceryWebsite" => array()
+                    ,"groceryImage" => array()
                     ,"active" => array()
                 );
 
                 for ($x = 0; $x < $query_data[1]; $x++) {
-                    $json_response["values"]["id"][$x] = $query_data[0][$x]["provider_id"];
-                    $json_response["values"]["providerId"][$x] = $query_data[0][$x]["numero_identificacion_proveedor"];
-                    $json_response["values"]["providerName"][$x] = $query_data[0][$x]["nombre_proveedor"];
-                    $json_response["values"]["name"][$x] = $query_data[0][$x]["nombre_proveedor"];
-                    $json_response["values"]["providerPhone"][$x] = $query_data[0][$x]["telefono_proveedor"];
-                    $json_response["values"]["providerCity"][$x] = "(" . $query_data[0][$x]["nombre_pais"] . ") " . $query_data[0][$x]["nombre_ciudad"];
+                    $json_response["values"]["id"][$x] = $query_data[0][$x]["id_almacen"];
+                    $json_response["values"]["name"][$x] = $query_data[0][$x]["nombre_almacen"];
+                    $json_response["values"]["groceryWebsite"][$x] = $query_data[0][$x]["pagina_web_almacen"];
+                    $json_response["values"]["groceryImage"][$x] = $query_data[0][$x]["imagen_almacen"];
                     $json_response["values"]["active"][$x] = $query_data[0][$x]["activo"];
                 }
 
@@ -322,29 +318,25 @@
                 $json_response["errorMessage"] = null;
 
                 break;
-            case "showProviderData":
+            case "showGroceryData":
 
                 $query_args = array(
-                    "providerid" => $json_data->callArguments->providerId
+                    "groceryid" => $json_data->callArguments->providerId
                 );
-                $query = "SELECT proveedor.id AS provider_id, numero_identificacion_proveedor, nombre_proveedor, telefono_proveedor, id_ciudad, id_tipo_identificacion FROM proveedor WHERE id = :providerid";
+                $query = "SELECT almacen.id AS id_almacen, nombre_almacen, pagina_web_almacen, CONCAT(index_archivo,'.',extencion_archivo) AS imagen_almacen FROM almacen LEFT JOIN imagen ON almacen.id_imagen = imagen.id WHERE almacen.id = :groceryid";
                 $query_data = pdoExecuteQuery($pdo_mysql_rw,$query,$query_args,$json_data->callHeader."_query_01");
 
                 $json_response["values"] = array(
-                    "id" => array()
-                    ,"providerId" => ""
-                    ,"providerName" => ""
-                    ,"providerPhone" => ""
-                    ,"providerCityId" => ""
-                    ,"providerIdType" => ""
+                    "id" => ""
+                    ,"groceryName" => ""
+                    ,"groceryWebsite" => ""
+                    ,"groceryImage" => ""
                 );
 
-                $json_response["values"]["id"] = $query_data[0][0]["provider_id"];
-                $json_response["values"]["providerId"] = $query_data[0][0]["numero_identificacion_proveedor"];
-                $json_response["values"]["providerName"] = $query_data[0][0]["nombre_proveedor"];
-                $json_response["values"]["providerPhone"] = $query_data[0][0]["telefono_proveedor"];
-                $json_response["values"]["providerCityId"] = $query_data[0][0]["id_ciudad"];
-                $json_response["values"]["providerIdType"] = $query_data[0][0]["id_tipo_identificacion"];
+                $json_response["values"]["id"] = $query_data[0][0]["id_almacen"];
+                $json_response["values"]["groceryName"] = $query_data[0][0]["nombre_almacen"];
+                $json_response["values"]["groceryWebsite"] = $query_data[0][0]["pagina_web_almacen"];
+                $json_response["values"]["groceryImage"] = $query_data[0][0]["imagen_almacen"];
 
                 $json_response["statusCode"] = 200;
                 $json_response["errorMessage"] = null;
