@@ -14,7 +14,7 @@
             $json_data = json_decode(file_get_contents('php://input'));
         }
 
-		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'admin', 'db_name' => "compraFacil"));
+		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'root', 'db_name' => "compraFacil"));
 
         switch ($json_data->changeHeader) {
             case "personRegistry":
@@ -373,46 +373,99 @@
                 $json_response["errorMessage"] = null;
 
                 break;
-            case "providerRegistry":
+            case "groceryRegistry":
+                $maxFileSize = 1.5e+7;
+                $uploadDirectory = 'imagenes/';
 
-                $providerCityId = $json_data->changeArguments->providerCityId;
-                $providerId = $json_data->changeArguments->providerId;
-                $providerIdType = $json_data->changeArguments->providerIdType;
-                $providerName = $json_data->changeArguments->providerName;
-                $providerPhone = $json_data->changeArguments->providerPhone;
+                $groceryName = $json_data->changeArguments->groceryName;
+                $groceryWebsite = $json_data->changeArguments->groceryWebsite;
+                if (isset($_FILES['filedata'])) {
+                    $imageFile = ($_FILES['filedata'] != "null" ? $_FILES['filedata'] : null);
+                } else {
+                    $imageFile = null;
+                }
 
                 $query_args = array(
-                    "providerid" => $providerId
+                    "groceryname" => $groceryName
                 );
-                $query = "SELECT id FROM proveedor WHERE numero_identificacion_proveedor = :providerid";
+                $query = "SELECT id FROM almacen WHERE nombre_almacen = :groceryname";
                 $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_01");
 
                 if ($query_data[1] == 0) {
-                    $query_args = array(
-                        "providerid" => $providerId
-                        ,"providertypeid" => $providerIdType
-                    );
-                    $query = "SELECT id FROM empleado WHERE numero_identificacion_empleado = :providerid AND id_tipo_identificacion = :providertypeid";
-                    $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_02");
+                    if ($imageFile != null) {
+                        $insertImageFlag = true;
+                        if (!isset($imageFile) && $imageFile["error"] != UPLOAD_ERR_OK) {
+                            //There was an upload error
+                            $json_response["values"] = array(
+                                "dataChangeCode" => 2
+                            );
+                            $insertImageFlag = false;
+                        }
+                        if ($imageFile["size"] > $maxFileSize) {
+                            //The given filesize is greater than 15mb
+                            $json_response["values"] = array(
+                                "dataChangeCode" => 3
+                            );
+                            $insertImageFlag = false;
+                        }
+                        if (sizeof(explode(".",clean($imageFile['name']))) > 2) {
+                            //The filename contains more than one dot
+                            $json_response["values"] = array(
+                                "dataChangeCode" => 4
+                            );
+                            $insertImageFlag = false;
+                        }
+                        $file_Name = explode(".",clean($imageFile['name']));
+                        $file_Name = clean($file_Name[0]);
+                        $file_Ext = explode(".",clean($imageFile['name']));
+                        $file_Ext = strtolower($file_Ext[1]);
+                    } else {
+                        $insertImageFlag = false;
+                    }
 
-                    if ($query_data[1] == 0) {
+                    if ($insertImageFlag) {
+                        $indexName = md5(uniqid(rand(), true));
                         $query_args = array(
-                            "providertypeid" => $providerIdType
-                            , "providerid" => $providerId
-                            , "providername" => $providerName
-                            , "providerphone" => $providerPhone
-                            , "providercityid" => $providerCityId
+                            "filename" => $file_Name
+                            ,"fileextension" => $file_Ext
+                            ,"fileindex" => $indexName
                         );
-                        $query = "INSERT INTO proveedor (id_tipo_identificacion, numero_identificacion_proveedor, nombre_proveedor, telefono_proveedor, id_ciudad, activo) VALUES (:providertypeid, :providerid, :providername, :providerphone, :providercityid, TRUE)";
-                        $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_03");
-                        logHandler(array("query" => $query_data[2], "action" => "insert"));
+                        $query = "INSERT INTO imagen (nombre_archivo,extencion_archivo,index_archivo) VALUES (:filename, :fileextension, :fileindex)";
+                        $query_data_2 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_02");
+                        logHandler(array("query" => $query_data_2[2], "action" => "insert"));
 
-                        $json_response["values"] = array(
-                            "dataChangeCode" => 1
+                        $newFileName = $indexName.".".$file_Ext;
+
+                        if(!move_uploaded_file($imageFile['tmp_name'], $uploadDirectory.$newFileName)) {
+                            //The given file was not able to get stored in the upload directory
+                            $json_response["values"] = array(
+                                "dataChangeCode" => 5
+                            );
+                        }
+                    }
+                    if ($insertImageFlag) {
+                        $query_args = array(
+                            "groeryname" => $groceryName
+                            ,"grocerywebsite" => $groceryWebsite
+                            ,"imageid" => $query_data_2[3]
+                            ,"active" => TRUE
                         );
                     } else {
+                        $query_args = array(
+                            "groeryname" => $groceryName
+                            ,"grocerywebsite" => $groceryWebsite
+                            ,"imageid" => NULL
+                            ,"active" => TRUE
+                        );
+                    }
+
+                    $query = "INSERT INTO almacen (nombre_almacen, pagina_web_almacen, id_imagen, activo) VALUES (:groeryname, :grocerywebsite, :imageid, :active)";
+                    $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_03");
+                    logHandler(array("query" => $query_data[2], "action" => "insert"));
+
+                    if (!isset($json_response["values"]["dataChangeCode"])) {
                         $json_response["values"] = array(
-                            "dataChangeCode" => 2
+                            "dataChangeCode" => 1
                         );
                     }
                 } else {
@@ -425,41 +478,147 @@
                 $json_response["errorMessage"] = null;
 
                 break;
-            case "providerUpdate":
+            case "groceryUpdate":
+                $maxFileSize = 1.5e+7;
+                $uploadDirectory = 'imagenes/';
 
-                $providerId = $json_data->changeArguments->providerId;
+                $groceryId = $json_data->changeArguments->groceryId;
                 $valueToUpdate = $json_data->changeArguments->valueToUpdate;
                 $fieldToUpdate = $json_data->changeArguments->fieldToUpdate;
+                if (isset($_FILES['filedata'])) {
+                    $imageFile = ($_FILES['filedata'] != "null" ? $_FILES['filedata'] : null);
+                } else {
+                    $imageFile = null;
+                }
 
                 for ($x = 0; $x < sizeof($valueToUpdate); $x++) {
                     switch ($fieldToUpdate[$x]) {
                         case 1:
-                            $query = "UPDATE proveedor SET id_ciudad = :toupdatevalue WHERE id = :toupdateid";
+                            $query = "UPDATE almacen SET nombre_almacen = :toupdatevalue WHERE id = :toupdateid";
                             $logAction = "update";
                             break;
                         case 2:
-                            $query = "UPDATE proveedor SET id_tipo_identificacion = :toupdatevalue WHERE id = :toupdateid";
+                            $query = "UPDATE almacen SET pagina_web_almacen = :toupdatevalue WHERE id = :toupdateid";
                             $logAction = "update";
                             break;
                         case 3:
-                            $query = "UPDATE proveedor SET numero_identificacion_proveedor = :toupdatevalue WHERE id = :toupdateid";
+                            $valueToUpdate[$x] = null;
+
+                            if ($imageFile != null) {
+                                $insertImageFlag = true;
+                                if (!isset($imageFile) && $imageFile["error"] != UPLOAD_ERR_OK) {
+                                    //There was an upload error
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 2
+                                    );
+                                    $insertImageFlag = false;
+                                }
+                                if ($imageFile["size"] > $maxFileSize) {
+                                    //The given filesize is greater than 15mb
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 3
+                                    );
+                                    $insertImageFlag = false;
+                                }
+                                if (sizeof(explode(".",clean($imageFile['name']))) > 2) {
+                                    //The filename contains more than one dot
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 4
+                                    );
+                                    $insertImageFlag = false;
+                                }
+                                $file_Name = explode(".",clean($imageFile['name']));
+                                $file_Name = clean($file_Name[0]);
+                                $file_Ext = explode(".",clean($imageFile['name']));
+                                $file_Ext = strtolower($file_Ext[1]);
+                            } else {
+                                $insertImageFlag = false;
+                            }
+
+                            if ($insertImageFlag) {
+                                $indexName = md5(uniqid(rand(), true));
+                                $query_args = array(
+                                    "filename" => $file_Name
+                                    , "fileextension" => $file_Ext
+                                    , "fileindex" => $indexName
+                                );
+                                $query = "INSERT INTO imagen (nombre_archivo,extencion_archivo,index_archivo) VALUES (:filename, :fileextension, :fileindex)";
+                                $query_data_1 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_01");
+                                logHandler(array("query" => $query_data_1[2], "action" => "insert"));
+
+                                $newFileName = $indexName . "." . $file_Ext;
+
+                                if (!move_uploaded_file($imageFile['tmp_name'], $uploadDirectory . $newFileName)) {
+                                    //The given file was not able to get stored in the upload directory
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 5
+                                    );
+                                } else {
+                                    $valueToUpdate[$x] = $query_data_1[3];
+
+                                    $query_args = array(
+                                        "id" => $groceryId
+                                    );
+                                    $query = "SELECT CONCAT(index_archivo,'.',extencion_archivo) AS imagen_almacen, imagen.id AS image_id FROM almacen LEFT JOIN imagen ON almacen.id_imagen = imagen.id WHERE almacen.id = :id";
+                                    $query_data_2 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_02");
+                                    $query_data_2[0][0]["imagen_almacen"];
+                                    if ($query_data_2[0][0]["imagen_almacen"] != null) {
+                                        try {
+                                            unlink($uploadDirectory . $query_data_2[0][0]["imagen_almacen"]);
+                                            $query_args = array(
+                                                "imageid" => $query_data_2[0][0]["image_id"]
+                                            );
+                                            $query = "DELETE FROM imagen WHERE id = :imageid";
+                                            $query_data_3 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_03");
+                                            logHandler(array("query" => $query_data_3[2], "action" => "delete"));
+                                        } catch (Exception $e) {
+                                            $json_response["values"] = array(
+                                                "dataChangeCode" => 6
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            if ($valueToUpdate[$x] == null) {
+                                $query_args = array(
+                                    "id" => $groceryId
+                                );
+                                $query = "SELECT id_imagen FROM almacen WHERE id = :id";
+                                $query_data_4 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_04");
+                                $valueToUpdate[$x] = $query_data_4[0][0]["id_imagen"];
+                            }
+
+                            $query = "UPDATE almacen SET id_imagen = :toupdatevalue WHERE id = :toupdateid";
                             $logAction = "update";
                             break;
                         case 4:
-                            $query = "UPDATE proveedor SET nombre_proveedor = :toupdatevalue WHERE id = :toupdateid";
+                            $query = "UPDATE almacen SET activo = :toupdatevalue WHERE id = :toupdateid";
                             $logAction = "update";
                             break;
                         case 5:
-                            $query = "UPDATE proveedor SET telefono_proveedor = :toupdatevalue WHERE id = :toupdateid";
-                            $logAction = "update";
-                            break;
-                        case 6:
-                            $query = "UPDATE proveedor SET activo = :toupdatevalue WHERE id = :toupdateid";
-                            $logAction = "update";
-                            break;
-                        case 7:
+                            $query_args = array(
+                                "id" => $groceryId
+                            );
+                            $query = "SELECT CONCAT(index_archivo,'.',extencion_archivo) AS imagen_almacen, imagen.id AS image_id FROM almacen LEFT JOIN imagen ON almacen.id_imagen = imagen.id WHERE almacen.id = :id";
+                            $query_data_5 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_05");
+                            $query_data_5[0][0]["imagen_almacen"];
+                            if ($query_data_5[0][0]["imagen_almacen"] != null) {
+                                try {
+                                    unlink($uploadDirectory . $query_data_5[0][0]["imagen_almacen"]);
+                                    $query_args = array(
+                                        "imageid" => $query_data_5[0][0]["image_id"]
+                                    );
+                                    $query = "DELETE FROM imagen WHERE id = :imageid";
+                                    $query_data_6 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_06");
+                                    logHandler(array("query" => $query_data_6[2], "action" => "delete"));
+                                } catch (Exception $e) {
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 6
+                                    );
+                                }
+                            }
                             $query = array(
-                                "DELETE FROM proveedor WHERE id = :toupdateid"
+                                "DELETE FROM almacen WHERE id = :toupdateid"
                             );
                             $logAction = "delete";
                             break;
@@ -477,29 +636,33 @@
                         case 2:
                         case 3:
                         case 4:
-                        case 5:
-                        case 6:
                             $query_args = array(
-                                "toupdateid" => $providerId
+                                "toupdateid" => $groceryId
                                 , "toupdatevalue" => $valueToUpdate[$x]
                             );
                             break;
-                        case 7:
+                        case 5:
                             $query_args = array(
-                                "toupdateid" => $providerId
+                                "toupdateid" => $groceryId
                             );
                             break;
                     }
 
                     if (is_array($query)) {
                         for ($y = 0; $y < sizeof($query); $y++) {
-                            $query_data = pdoExecuteQuery($pdo_mysql_rw, $query[$y], $query_args, $json_data->changeHeader . "_query_03");
+                            $query_data = pdoExecuteQuery($pdo_mysql_rw, $query[$y], $query_args, $json_data->changeHeader . "_query_07");
                             logHandler(array("query" => $query_data[2], "action" => $logAction));
                         }
                     } else {
-                        $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_03");
+                        $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_08");
                         logHandler(array("query" => $query_data[2], "action" => $logAction));
                     }
+                }
+
+                if (!isset($json_response["values"]["dataChangeCode"])) {
+                    $json_response["values"] = array(
+                        "dataChangeCode" => 1
+                    );
                 }
 
                 $json_response["statusCode"] = 200;
@@ -508,33 +671,104 @@
                 break;
             case "productRegistry":
 
-                $productProviderId = $json_data->changeArguments->productProviderId;
-                $productTypeId = $json_data->changeArguments->productTypeId;
+                $maxFileSize = 1.5e+7;
+                $uploadDirectory = 'imagenes/';
+
+                $groceryId = $json_data->changeArguments->groceryId;
                 $productName = $json_data->changeArguments->productName;
                 $productPrize = $json_data->changeArguments->productPrize;
+                if (isset($_FILES['filedata'])) {
+                    $imageFile = ($_FILES['filedata'] != "null" ? $_FILES['filedata'] : null);
+                } else {
+                    $imageFile = null;
+                }
 
                 $query_args = array(
-                    "productname" => $productName
-                    ,"producttypeid" => $productTypeId
-                    ,"productproviderid" => $productProviderId
+                    "groceryid" => $groceryId
+                    ,"productname" => $productName
                 );
-                $query = "SELECT id FROM producto WHERE nombre_producto = :productname AND id_tipo_producto = :producttypeid AND id_proveedor = :productproviderid";
+                $query = "SELECT id FROM producto WHERE nombre_producto = :productname AND id_almacen = :groceryid";
                 $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_01");
 
                 if ($query_data[1] == 0) {
-                    $query_args = array(
-                        "producttypeid" => $productTypeId
-                        , "providerid" => $productProviderId
-                        , "productname" => $productName
-                        , "productprize" => $productPrize
-                    );
-                    $query = "INSERT INTO producto (id_tipo_producto, id_proveedor, nombre_producto, precio_venta_producto, activo) VALUES (:producttypeid, :providerid, :productname, :productprize, TRUE)";
+                    if ($imageFile != null) {
+                        $insertImageFlag = true;
+                        if (!isset($imageFile) && $imageFile["error"] != UPLOAD_ERR_OK) {
+                            //There was an upload error
+                            $json_response["values"] = array(
+                                "dataChangeCode" => 2
+                            );
+                            $insertImageFlag = false;
+                        }
+                        if ($imageFile["size"] > $maxFileSize) {
+                            //The given filesize is greater than 15mb
+                            $json_response["values"] = array(
+                                "dataChangeCode" => 3
+                            );
+                            $insertImageFlag = false;
+                        }
+                        if (sizeof(explode(".",clean($imageFile['name']))) > 2) {
+                            //The filename contains more than one dot
+                            $json_response["values"] = array(
+                                "dataChangeCode" => 4
+                            );
+                            $insertImageFlag = false;
+                        }
+                        $file_Name = explode(".",clean($imageFile['name']));
+                        $file_Name = clean($file_Name[0]);
+                        $file_Ext = explode(".",clean($imageFile['name']));
+                        $file_Ext = strtolower($file_Ext[1]);
+                    } else {
+                        $insertImageFlag = false;
+                    }
+
+                    if ($insertImageFlag) {
+                        $indexName = md5(uniqid(rand(), true));
+                        $query_args = array(
+                            "filename" => $file_Name
+                            ,"fileextension" => $file_Ext
+                            ,"fileindex" => $indexName
+                        );
+                        $query = "INSERT INTO imagen (nombre_archivo,extencion_archivo,index_archivo) VALUES (:filename, :fileextension, :fileindex)";
+                        $query_data_2 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_02");
+                        logHandler(array("query" => $query_data_2[2], "action" => "insert"));
+
+                        $newFileName = $indexName.".".$file_Ext;
+
+                        if(!move_uploaded_file($imageFile['tmp_name'], $uploadDirectory.$newFileName)) {
+                            //The given file was not able to get stored in the upload directory
+                            $json_response["values"] = array(
+                                "dataChangeCode" => 5
+                            );
+                        }
+                    }
+                    if ($insertImageFlag) {
+                        $query_args = array(
+                            "groceryid" => $groceryId
+                            ,"productname" => $productName
+                            ,"productprize" => $productPrize
+                            ,"imageid" => $query_data_2[3]
+                            ,"active" => TRUE
+                        );
+                    } else {
+                        $query_args = array(
+                            "groceryid" => $groceryId
+                            ,"productname" => $productName
+                            ,"productprize" => $productPrize
+                            ,"imageid" => NULL
+                            ,"active" => TRUE
+                        );
+                    }
+
+                    $query = "INSERT INTO producto (id_almacen, nombre_producto, precio_producto, id_imagen, activo) VALUES (:groceryid, :productname, :productprize, :imageid, :active)";
                     $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_03");
                     logHandler(array("query" => $query_data[2], "action" => "insert"));
 
-                    $json_response["values"] = array(
-                        "dataChangeCode" => 1
-                    );
+                    if (!isset($json_response["values"]["dataChangeCode"])) {
+                        $json_response["values"] = array(
+                            "dataChangeCode" => 1
+                        );
+                    }
                 } else {
                     $json_response["values"] = array(
                         "dataChangeCode" => 0
@@ -547,26 +781,120 @@
                 break;
             case "productUpdate":
 
+                $maxFileSize = 1.5e+7;
+                $uploadDirectory = 'imagenes/';
+
                 $productId = $json_data->changeArguments->productId;
                 $valueToUpdate = $json_data->changeArguments->valueToUpdate;
                 $fieldToUpdate = $json_data->changeArguments->fieldToUpdate;
+                if (isset($_FILES['filedata'])) {
+                    $imageFile = ($_FILES['filedata'] != "null" ? $_FILES['filedata'] : null);
+                } else {
+                    $imageFile = null;
+                }
 
                 for ($x = 0; $x < sizeof($valueToUpdate); $x++) {
                     switch ($fieldToUpdate[$x]) {
                         case 1:
-                            $query = "UPDATE producto SET id_proveedor = :toupdatevalue WHERE id = :toupdateid";
+                            $query = "UPDATE producto SET id_almacen = :toupdatevalue WHERE id = :toupdateid";
                             $logAction = "update";
                             break;
                         case 2:
-                            $query = "UPDATE producto SET id_tipo_producto = :toupdatevalue WHERE id = :toupdateid";
-                            $logAction = "update";
-                            break;
-                        case 3:
                             $query = "UPDATE producto SET nombre_producto = :toupdatevalue WHERE id = :toupdateid";
                             $logAction = "update";
                             break;
+                        case 3:
+                            $query = "UPDATE producto SET precio_producto = :toupdatevalue WHERE id = :toupdateid";
+                            $logAction = "update";
+                            break;
                         case 4:
-                            $query = "UPDATE producto SET precio_venta_producto = :toupdatevalue WHERE id = :toupdateid";
+                            $valueToUpdate[$x] = null;
+
+                            if ($imageFile != null) {
+                                $insertImageFlag = true;
+                                if (!isset($imageFile) && $imageFile["error"] != UPLOAD_ERR_OK) {
+                                    //There was an upload error
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 2
+                                    );
+                                    $insertImageFlag = false;
+                                }
+                                if ($imageFile["size"] > $maxFileSize) {
+                                    //The given filesize is greater than 15mb
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 3
+                                    );
+                                    $insertImageFlag = false;
+                                }
+                                if (sizeof(explode(".",clean($imageFile['name']))) > 2) {
+                                    //The filename contains more than one dot
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 4
+                                    );
+                                    $insertImageFlag = false;
+                                }
+                                $file_Name = explode(".",clean($imageFile['name']));
+                                $file_Name = clean($file_Name[0]);
+                                $file_Ext = explode(".",clean($imageFile['name']));
+                                $file_Ext = strtolower($file_Ext[1]);
+                            } else {
+                                $insertImageFlag = false;
+                            }
+
+                            if ($insertImageFlag) {
+                                $indexName = md5(uniqid(rand(), true));
+                                $query_args = array(
+                                    "filename" => $file_Name
+                                    , "fileextension" => $file_Ext
+                                    , "fileindex" => $indexName
+                                );
+                                $query = "INSERT INTO imagen (nombre_archivo,extencion_archivo,index_archivo) VALUES (:filename, :fileextension, :fileindex)";
+                                $query_data_1 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_01");
+                                logHandler(array("query" => $query_data_1[2], "action" => "insert"));
+
+                                $newFileName = $indexName . "." . $file_Ext;
+
+                                if (!move_uploaded_file($imageFile['tmp_name'], $uploadDirectory . $newFileName)) {
+                                    //The given file was not able to get stored in the upload directory
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 5
+                                    );
+                                } else {
+                                    $valueToUpdate[$x] = $query_data_1[3];
+
+                                    $query_args = array(
+                                        "id" => $productId
+                                    );
+                                    $query = "SELECT CONCAT(index_archivo,'.',extencion_archivo) AS imagen_producto, imagen.id AS image_id FROM producto LEFT JOIN imagen ON producto.id_imagen = imagen.id WHERE producto.id = :id";
+                                    $query_data_2 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_02");
+                                    $query_data_2[0][0]["imagen_producto"];
+                                    if ($query_data_2[0][0]["imagen_producto"] != null) {
+                                        try {
+                                            unlink($uploadDirectory . $query_data_2[0][0]["imagen_producto"]);
+                                            $query_args = array(
+                                                "imageid" => $query_data_2[0][0]["image_id"]
+                                            );
+                                            $query = "DELETE FROM imagen WHERE id = :imageid";
+                                            $query_data_3 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_03");
+                                            logHandler(array("query" => $query_data_3[2], "action" => "delete"));
+                                        } catch (Exception $e) {
+                                            $json_response["values"] = array(
+                                                "dataChangeCode" => 6
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            if ($valueToUpdate[$x] == null) {
+                                $query_args = array(
+                                    "id" => $productId
+                                );
+                                $query = "SELECT id_imagen FROM producto WHERE id = :id";
+                                $query_data_4 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_04");
+                                $valueToUpdate[$x] = $query_data_4[0][0]["id_imagen"];
+                            }
+
+                            $query = "UPDATE producto SET id_imagen = :toupdatevalue WHERE id = :toupdateid";
                             $logAction = "update";
                             break;
                         case 5:
@@ -574,6 +902,27 @@
                             $logAction = "update";
                             break;
                         case 6:
+                            $query_args = array(
+                                "id" => $productId
+                            );
+                            $query = "SELECT CONCAT(index_archivo,'.',extencion_archivo) AS imagen_producto, imagen.id AS image_id FROM producto LEFT JOIN imagen ON producto.id_imagen = imagen.id WHERE producto.id = :id";
+                            $query_data_5 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_05");
+                            $query_data_5[0][0]["imagen_producto"];
+                            if ($query_data_5[0][0]["imagen_producto"] != null) {
+                                try {
+                                    unlink($uploadDirectory . $query_data_5[0][0]["imagen_producto"]);
+                                    $query_args = array(
+                                        "imageid" => $query_data_5[0][0]["image_id"]
+                                    );
+                                    $query = "DELETE FROM imagen WHERE id = :imageid";
+                                    $query_data_6 = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_06");
+                                    logHandler(array("query" => $query_data_6[2], "action" => "delete"));
+                                } catch (Exception $e) {
+                                    $json_response["values"] = array(
+                                        "dataChangeCode" => 6
+                                    );
+                                }
+                            }
                             $query = array(
                                 "DELETE FROM producto WHERE id = :toupdateid"
                             );
@@ -608,13 +957,19 @@
 
                     if (is_array($query)) {
                         for ($y = 0; $y < sizeof($query); $y++) {
-                            $query_data = pdoExecuteQuery($pdo_mysql_rw, $query[$y], $query_args, $json_data->changeHeader . "_query_03");
+                            $query_data = pdoExecuteQuery($pdo_mysql_rw, $query[$y], $query_args, $json_data->changeHeader . "_query_07");
                             logHandler(array("query" => $query_data[2], "action" => $logAction));
                         }
                     } else {
-                        $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_03");
+                        $query_data = pdoExecuteQuery($pdo_mysql_rw, $query, $query_args, $json_data->changeHeader . "_query_08");
                         logHandler(array("query" => $query_data[2], "action" => $logAction));
                     }
+                }
+
+                if (!isset($json_response["values"]["dataChangeCode"])) {
+                    $json_response["values"] = array(
+                        "dataChangeCode" => 1
+                    );
                 }
 
                 $json_response["statusCode"] = 200;
