@@ -16,7 +16,7 @@
             $json_data = json_decode(file_get_contents('php://input'));
         }
 
-		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'admin', 'db_name' => "compraFacil"));
+		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'root', 'db_name' => "compraFacil"));
 
         switch ($json_data->callHeader) {
             case "closeSession":
@@ -367,24 +367,24 @@
             case "showProducts":
 
                 $query_args = array();
-                $query = "SELECT producto.id AS product_id, nombre_producto, nombre_tipo_producto, nombre_proveedor, precio_venta_producto, producto.activo FROM producto INNER JOIN tipo_producto ON producto.id_tipo_producto = tipo_producto.id INNER JOIN proveedor ON producto.id_proveedor = proveedor.id ORDER BY nombre_tipo_producto ASC, nombre_producto ASC";
+                $query = "SELECT pr.id, al.nombre_almacen, pr.nombre_producto, pr.precio_producto, CONCAT(im.index_archivo,'.',im.extencion_archivo) AS imagen_producto, pr.activo FROM producto AS pr INNER JOIN almacen AS al ON al.id = pr.id_almacen LEFT JOIN imagen AS im ON im.id = pr.id_imagen ORDER BY activo ASC, al.nombre_almacen ASC, nombre_producto ASC";
                 $query_data = pdoExecuteQuery($pdo_mysql_rw,$query,$query_args,$json_data->callHeader."_query_01");
 
                 $json_response["values"] = array(
                     "id" => array()
-                    ,"productName" => array()
-                    ,"productType" => array()
-                    ,"productProvider" => array()
+                    ,"groceryName" => array()
+                    ,"productName" => array()  
                     ,"productPrize" => array()
+                    ,"productImage" => array()
                     ,"active" => array()
                 );
 
                 for ($x = 0; $x < $query_data[1]; $x++) {
-                    $json_response["values"]["id"][$x] = $query_data[0][$x]["product_id"];
+                    $json_response["values"]["id"][$x] = $query_data[0][$x]["id"];
+                    $json_response["values"]["groceryName"][$x] = $query_data[0][$x]["nombre_almacen"];
                     $json_response["values"]["productName"][$x] = $query_data[0][$x]["nombre_producto"];
-                    $json_response["values"]["productType"][$x] = $query_data[0][$x]["nombre_tipo_producto"];
-                    $json_response["values"]["productProvider"][$x] = $query_data[0][$x]["nombre_proveedor"];
-                    $json_response["values"]["productPrize"][$x] = $query_data[0][$x]["precio_venta_producto"];
+                    $json_response["values"]["productPrize"][$x] = $query_data[0][$x]["precio_producto"];
+                    $json_response["values"]["productImage"][$x] = $query_data[0][$x]["imagen_producto"];
                     $json_response["values"]["active"][$x] = $query_data[0][$x]["activo"];
                 }
 
@@ -395,24 +395,24 @@
             case "showProductData":
 
                 $query_args = array(
-                    "productid" => $json_data->callArguments->productId
+                    "productId" => $json_data->callArguments->productId
                 );
-                $query = "SELECT producto.id AS product_id, nombre_producto, id_tipo_producto, id_proveedor, precio_venta_producto FROM producto WHERE id = :productid";
+                $query = "SELECT pr.id, al.id AS almacen, pr.nombre_producto, pr.precio_producto, CONCAT(im.index_archivo,'.',im.extencion_archivo) AS imagen_producto FROM producto AS pr INNER JOIN almacen AS al ON al.id = pr.id_almacen LEFT JOIN imagen AS im ON im.id = pr.id_imagen WHERE pr.id = :productId";
                 $query_data = pdoExecuteQuery($pdo_mysql_rw,$query,$query_args,$json_data->callHeader."_query_01");
 
                 $json_response["values"] = array(
                     "id" => ""
+                    ,"groceryId" => ""
                     ,"productName" => ""
-                    ,"productTypeId" => ""
-                    ,"productProviderId" => ""
                     ,"productPrize" => ""
+                    ,"productImage" => ""
                 );
 
-                $json_response["values"]["id"] = $query_data[0][0]["product_id"];
+                $json_response["values"]["id"] = $query_data[0][0]["id"];
+                $json_response["values"]["groceryId"] = $query_data[0][0]["almacen"];
                 $json_response["values"]["productName"] = $query_data[0][0]["nombre_producto"];
-                $json_response["values"]["productTypeId"] = $query_data[0][0]["id_tipo_producto"];
-                $json_response["values"]["productProviderId"] = $query_data[0][0]["id_proveedor"];
-                $json_response["values"]["productPrize"] = $query_data[0][0]["precio_venta_producto"];
+                $json_response["values"]["productPrize"] = $query_data[0][0]["precio_producto"];
+                $json_response["values"]["productImage"] = $query_data[0][0]["imagen_producto"];
 
                 $json_response["statusCode"] = 200;
                 $json_response["errorMessage"] = null;
