@@ -16,7 +16,7 @@
             $json_data = json_decode(file_get_contents('php://input'));
         }
 
-		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => 'root', 'db_name' => "compraFacil"));
+		$pdo_mysql_rw = pdoCreateConnection(array('db_type' => "mysql", 'db_host' => "localhost", 'db_user' => "root", 'db_pass' => "admin", 'db_name' => "compraFacil"));
 
         switch ($json_data->callHeader) {
             case "closeSession":
